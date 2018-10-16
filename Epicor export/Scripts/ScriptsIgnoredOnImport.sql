@@ -1,0 +1,688 @@
+﻿
+select 
+Company = 'BackerTe',
+VENDGROUP.VENDGROUP AS GroupCode,
+Name AS Groupdescription
+
+FROM dbo.VENDGROUP
+WHERE VENDGROUP.DATAAREAID ='ba1'
+GO
+
+-- =============================================
+-- Create Database Snapshot 
+-- Change the logical filename in this case it's AgdaPS_Data
+-- Change snapshot NAME AND SNAPSHOT OF 
+-- =============================================
+USE master
+GO
+
+-- Drop database snapshot if it already exists
+IF  EXISTS (
+	SELECT name 
+		FROM sys.databases 
+		WHERE name = N'EpicorERPTest_snap'
+)
+DROP DATABASE EpicorERPTest_snap
+GO
+
+-- Create the database snapshot
+CREATE DATABASE EpicorERPTest_snap ON
+( NAME = EpicorERPTest, FILENAME = 
+'\\nivm702\f$\SnapShot\EpicorERPTest_snap.ss' )
+AS SNAPSHOT OF EpicorERPTest;
+GO
+
+SELECT 
+Company = 'BackerTe',
+CURRENCY.CURRENCYCODE,
+txt AS CurrDesc,
+CURRENCY.CURRENCYCODE AS CurrencyID
+
+FROM dbo.CURRENCY
+WHERE CURRENCY.DATAAREAID ='ba1'
+GO
+
+SELECT 
+Company = 'BackerTe',
+CUSTGROUP.CUSTGROUP AS GroupCode,
+CUSTGROUP.NAME AS GROUPDescription
+
+FROM dbo.CUSTGROUP
+WHERE CUSTGROUP.DATAAREAID ='ba1'
+GO
+
+SELECT 
+code,
+SUBSTRING(Code,1,4) AS ShipViaCode,
+txt AS [Description]
+
+
+FROM dbo.DLVMODE
+WHERE DLVMODE.DATAAREAID = 'ba1'
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+SELECT
+Company = 'BackerTe',
+dbo.BOMVERSION.ITEMID	 AS Partnum ,
+RevisionNum = 1,
+bom.ITEMID AS MtlPartNum ,
+Bom.BOMQTY AS QtyPer,
+bom.ACK_BOMTXT AS MfgComment,
+BOM.UNITID AS UOMCode
+FROM bom INNER JOIN dbo.BOMVERSION ON BOMVERSION.BOMID = BOM.BOMID AND BOMVERSION.DATAAREAID = BOM.DATAAREAID
+INNER JOIN dbo.INVENTTABLE ON INVENTTABLE.DATAAREAID = BOM.DATAAREAID AND INVENTTABLE.ITEMID = BOMVERSION.ITEMID
+WHERE BOM.DATAAREAID ='ba1' AND dbo.BOMVERSION.ACTIVE = 1
+AND dbo.INVENTTABLE.ACK_ITEMSTATUSID IN( 'K40_Produktion')
+--ORDER BY dbo.BOMVERSION.ITEMID
+
+--SELECT * FROM bom WHERE bom.DATAAREAID = 'ba1'
+--406536
+--394652
+--152202
+
+--SELECT INVENTTABLE.ACK_ITEMSTATUSID FROM dbo.INVENTTABLE WHERE INVENTTABLE.DATAAREAID ='ba1' GROUP BY INVENTTABLE.ACK_ITEMSTATUSID
+GO
+
+/*
+	180710
+	Export customer data 
+	use Epicor template to import into EPICOR
+	Alias is the same as in Epicor template
+
+*/
+
+SELECT
+Company = 'BackerTe',
+CUSTTABLE.ACCOUNTNUM AS CustId,
+CUSTTABLE.NAME AS [Name],
+dbo.CUSTTABLE.street AS Adress1,
+dbo.CUSTTABLE.ZIPCODE +' ' + CUSTTABLE.CITY AS Adress2,
+--dbo.CUSTTABLE.COUNTRY AS Adress3,
+country.NAME AS Adress3,
+CUSTTABLE.CITY AS [city],
+CUSTTABLE.STATE AS [state],
+CUSTTABLE.ZIPCODE AS [Zip],
+--CUSTTABLE.COUNTRY AS [country],
+country.NAME AS [country],
+CUSTTABLE.SALESGROUP AS SalesRepCode,
+CUSTTABLE.STATE AS [TerritoryId],
+CUSTTABLE.EPICORPAYMTERMID AS [TermsCode], ------------------------  MAx 4 char------------------------------------------------------------
+
+--------- if there are a blocking it will be yes else no
+CASE WHEN CUSTTABLE.BLOCKED = 0 THEN 'no' ELSE 'yes' END AS CreditHold,
+--CUSTTABLE.BLOCKED AS CreditHold, 
+
+CUSTTABLE.CUSTGROUP AS GroupCode,
+dbo.CUSTTABLE.CREATEDDATE AS EstDate,
+CUSTTABLE.TELEFAX AS FaxNum,
+CUSTTABLE.PHONE	AS PhoneNum,
+CUSTTABLE.CURRENCY AS [CurrencyCode],
+
+CASE when CUSTTABLE.LANGUAGEID = 'sv' THEN 'sve' ELSE
+CASE when CUSTTABLE.LANGUAGEID = 'fi' THEN 'fin' ELSE 
+CASE WHEN CUSTTABLE.LANGUAGEID = 'en-gb' THEN 'eng' ELSE 
+CASE WHEN CUSTTABLE.LANGUAGEID = 'en-us' THEN 'enu' ELSE 
+ CUSTTABLE.LANGUAGEID END END END END AS LangNameID,
+--CUSTTABLE.LANGUAGEID AS LangNameID,
+
+CUSTTABLE.EMAIL AS [EmailAddress],
+(SELECT 'CUS') AS CustomerType,
+CUSTTABLE.URL	AS CustURL,
+CUSTTABLE.CREDITMAX AS CreditLimit,
+CUSTTABLE.ACK_ORGNUM AS OrgRegCode,
+CUSTTABLE.LINEOFBUSINESSID AS THBranchID,
+CUSTTABLE.ACK_TRANSFERTOCRM	AS syncToExternalCRM,
+
+CUSTTABLE.CRMACCOUNTID AS ExternalCRMCustomerId
+
+
+FROM dbo.CUSTTABLE INNER JOIN dbo.COUNTRY ON COUNTRY.DATAAREAID = CUSTTABLE.DATAAREAID AND country.COUNTRYID = dbo.CUSTTABLE.COUNTRY
+WHERE CUSTTABLE.DATAAREAID ='ba1'
+GO
+
+--SELECT languageid FROM dbo.CUSTTABLE WHERE CUSTTABLE.DATAAREAID = 'ba1' group by languageid
+
+--SELECT * FROM dbo.COUNTRY
+
+--30 D
+
+SELECT 
+CUSTTABLE.ACK_ORGNUM AS OrgRegCode ,
+LEN(CUSTTABLE.ACK_ORGNUM) AS chars12
+FROM custtable WHERE CUSTTABLE.DATAAREAID ='ba1'
+ORDER BY LEN(CUSTTABLE.ACK_ORGNUM) DESC
+GO
+
+-------
+
+SELECT *
+--vendtable.ACK_ORGNUM AS OrgRegCode ,
+--LEN(CUSTTABLE.ACK_ORGNUM) AS chars12
+FROM vendtable WHERE vendtable.DATAAREAID ='ba1'
+ORDER BY LEN(vendtable.ACK_ORGNUM) DESC
+GO
+
+SELECT 
+LTRIM(VENDTABLE.ACCOUNTNUM) AS vendid,
+LEN(LTRIM(VENDTABLE.ACCOUNTNUM)) AS Chars8
+FROM vendtable
+WHERE vendtable.DATAAREAID ='ba1'
+ORDER BY LEN(LTRIM(VENDTABLE.ACCOUNTNUM)) DESC
+GO
+
+SELECT
+
+--------- if there are a blocking it will be yes else no
+CASE WHEN vendtable.BLOCKED = 0 THEN 'no' ELSE 'yes' END AS Inactive,
+Company = 'BackerTe',
+LTRIM(vendTable.ACCOUNTNUM) AS VendorID,
+VendTable.[name] AS [Name],
+
+dbo.VendTable.street AS Adress1,
+dbo.VendTable.ZIPCODE +' ' + VendTable.CITY AS Adress2,
+--dbo.CUSTTABLE.COUNTRY AS Adress3,
+country.NAME AS Adress3,
+VendTable.CITY AS [city],
+VendTable.STATE AS [state],
+VendTable.ZIPCODE AS [Zip],
+--CUSTTABLE.COUNTRY AS [country],
+country.NAME AS [country],
+--vendtable.EpicorDLVTERM AS TermsCode, 
+vendtable.PAYMTERMID AS TermsCode, 
+dbo.VENDTABLE.VENDGROUP AS GroupCode,
+vendtable.TELEFAX AS FaxNum,
+dbo.VENDTABLE.PHONE AS PhoneNum,
+
+VENDTABLE.CURRENCY AS [CurrencyCode],
+
+CASE when VENDTABLE.LANGUAGEID = 'sv' THEN 'sve' ELSE
+CASE when VENDTABLE.LANGUAGEID = 'fi' THEN 'fin' ELSE 
+CASE WHEN VENDTABLE.LANGUAGEID = 'en-gb' THEN 'eng' ELSE 
+CASE WHEN VENDTABLE.LANGUAGEID = 'en-us' THEN 'enu' ELSE 
+
+CASE WHEN VENDTABLE.LANGUAGEID = 'de' THEN 'deu' ELSE 
+CASE WHEN VENDTABLE.LANGUAGEID = 'da' THEN 'dan' ELSE 
+ VENDTABLE.LANGUAGEID END END END END END end AS LangNameID,
+
+Approved = 'yes',                                              ------------ To make a purchase the vendor must be approved -----------------
+vendtable.EMAIL AS EmailAddress,
+VendTable.URL AS VendURL,
+--dbo.VENDTABLE.EPICORPAYMTERMID AS PMUID,								
+VendTable.EPICORDLVMODE AS ShipViaCode                              
+--PAYMTERM.DESCRIPTION AS PaymentMethodName
+--*
+FROM vendtable INNER JOIN dbo.COUNTRY ON COUNTRY.DATAAREAID = vendtable.DATAAREAID AND country.COUNTRYID = vendtable.COUNTRY
+INNER JOIN dbo.PAYMTERM ON PAYMTERM.DATAAREAID = VENDTABLE.DATAAREAID AND PAYMTERM.PAYMTERMID = VENDTABLE.PAYMTERMID
+WHERE dbo.VENDTABLE.dataareaid='ba1'
+HAVING len(vendtable.STREET)> 50
+--AND LTRIM(vendTable.ACCOUNTNUM) = '70095'
+-- TEST
+--AND vendtable.NAME = ''
+
+--
+--SELECT dbo.VENDTABLE.LANGUAGEID FROM dbo.VENDTABLE WHERE VENDTABLE.DATAAREAID ='ba1' GROUP BY dbo.VENDTABLE.LANGUAGEID
+
+---
+GO
+
+SELECT 
+inventTable.ITEMID,
+dbo.INVENTTABLE.ABCVALUE ,
+INVENTTABLE.ABCTIEUP,INVENTTABLE.ABCREVENUE,INVENTTABLE.ABCCONTRIBUTIONMARGIN
+FROM dbo.INVENTTABLE
+WHERE INVENTTABLE.DATAAREAID = 'bo1'
+AND INVENTTABLE.ABCVALUE <> 0
+--GROUP BY 
+--dbo.INVENTTABLE.ABCVALUE ,INVENTTABLE.ABCTIEUP,INVENTTABLE.ABCREVENUE,INVENTTABLE.ABCCONTRIBUTIONMARGIN
+GO
+
+/*
+	if source_database_id <> Null then there are a snapshot created.
+	name column gives the name of the snapshot
+	Observer only one snapshot at the time.
+
+*/
+
+SELECT source_database_id,* 
+FROM sys.databases
+WHERE databases.source_database_id  IS NOT NULL
+GO
+
+SELECT
+    COUNTRY.COUNTRYID     AS Company,
+    COUNTRY.ISOCODE       AS ISOCode,
+    COUNTRY.NAME          AS [Description],
+    COUNTRY.INTRASTATCODE AS iStatCode,
+    COUNTRY.CURRENCYCODE  AS CurrencyCode
+FROM
+    dbo.COUNTRY
+WHERE
+    COUNTRY.DATAAREAID = 'ba1';
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+SELECT --PAYMTERM.PAYMTERMID,
+--SUBSTRING(PAYMTERM.PAYMTERMID,1,4) AS TermsCode,
+Company = 'BackerTe',
+PaymTerm.EPICORPAYMTERMID AS TermsCode,
+PAYMTERM.DESCRIPTION AS [Description],
+PAYMTERM.NUMOFDAYS AS NumberOfDays
+--LEN(PAYMTERMID) AS c,
+--*
+FROM 
+dbo.PAYMTERM
+WHERE PAYMTERM.DATAAREAID = 'ba1'
+ORDER BY LEN(PAYMTERMID)
+GO
+
+SELECT 
+Company = 'BackerTe',
+INVENTITEMGROUP.ITEMGROUPID AS ProdCode,
+[Name] AS [Descrtiption]
+--CASE WHEN SUBSTRING(INVENTITEMGROUP.ITEMGROUPID,1,1)='k' THEN 
+FROM dbo.INVENTITEMGROUP
+WHERE INVENTITEMGROUP.DATAAREAID ='ba1'
+GO
+
+SELECT
+    CUSTTABLE.SALESGROUP,
+    CUSTTABLE.ACCOUNTNUM,
+    CUSTTABLE.NAME,
+    CUSTTABLE.ZIPCODE,
+    CUSTTABLE.DATAAREAID
+FROM
+    dbo.CUSTTABLE
+WHERE
+    CUSTTABLE.DATAAREAID = 'ba1' COLLATE database_default
+    AND CUSTTABLE.ZIPCODE = '' COLLATE database_default
+GO
+
+SELECT
+    c.SALESGROUP,
+    c.ACCOUNTNUM,
+    c.NAME,
+    c.ZIPCODE,
+    c.DATAAREAID
+FROM
+    [NIVM330\OBR].[OBR30_PRO].[dbo].[CUSTTABLE] AS c --COLLATE database_default
+WHERE
+    c.DATAAREAID  = 'bo1' COLLATE database_default
+    AND c.ZIPCODE   = '' COLLATE database_default
+GO
+
+SELECT
+    c.PURCHPOOLID,
+    c.ACCOUNTNUM,
+    c.NAME,
+    c.ZIPCODE,
+    c.DATAAREAID
+FROM
+    [NIVM330\OBR].[OBR30_PRO].[dbo].[VENDTABLE] AS c --COLLATE database_default
+WHERE
+    c.DATAAREAID  = 'ba1' COLLATE database_default
+    AND c.ZIPCODE   = '' COLLATE database_default
+GO
+
+SELECT
+    c.PURCHPOOLID,
+    c.ACCOUNTNUM,
+    c.NAME,
+    c.ZIPCODE,
+    c.DATAAREAID
+FROM
+    [NIVM330\OBR].[OBR30_PRO].[dbo].[VENDTABLE] AS c --COLLATE database_default
+WHERE
+    c.DATAAREAID  = 'bo1' COLLATE database_default
+    AND c.ZIPCODE   = '' COLLATE database_default
+GO
+
+/*
+
+*/
+
+SELECT 
+Company = 'BackerTe',
+i.ITEMID AS PartNum,
+
+CASE WHEN i.ITEMNAME = '' OR i.ITEMNAME IS NULL THEN i.ITEMID ELSE i.ITEMNAME END AS PartDescription ,
+
+--i.ITEMNAME AS PartDescription, --- TODO if missing add partnumber as description
+i.ITEMGROUPID AS ClassID,
+invent.UNITID AS IUM,
+
+-- if unit id is missing on purch then use unitid from invent
+CASE WHEN purch.UNITID ='' OR purch.UNITID IS NULL THEN invent.UNITID ELSE purch.UNITID END AS PUM,
+--purch.UNITID AS PUM,
+
+
+ CASE WHEN i.ITEMTYPE = 0 THEN 'P' else
+ Case	WHEN i.ITEMTYPE = 1 THEN 'M' ELSE '' END END AS TypeCode,
+
+invent.price AS UnitPrice,
+
+-------
+ CASE WHEN invent.PRICEUNIT = 0 THEN 'E' ELSE -- if 0 then set 1
+ Case	WHEN invent.PRICEUNIT >= 1 AND invent.PRICEUNIT < 50 THEN 'E' ELSE 
+ Case	WHEN invent.PRICEUNIT > 50 AND invent.PRICEUNIT < 500 THEN 'C' ELSE
+  Case	WHEN invent.PRICEUNIT > 500  THEN 'M' 
+ ELSE '' END END END END AS pricepercode,
+i.ITEMGROUPID AS ProdCode,
+-----------------------------------------------------------------------------------
+-- make sure the UOMCLSID  and the UOM:S are created in Epicor
+--UOMClassID
+
+CASE WHEN  invent.UNITID = 'CM' THEN 'Length'
+WHEN invent.UNITID  = 'DM2'THEN 'Area'  
+WHEN invent.UNITID  = 'FP' THEN 'Other'	
+WHEN invent.UNITID  = 'GR' THEN 'Weight'
+WHEN invent.UNITID  = 'Kart' THEN 'Other' 
+WHEN invent.UNITID  = 'KG' THEN 'Weight' 
+WHEN invent.UNITID  = 'L' THEN 'Volume' 
+WHEN invent.UNITID  = 'M' THEN 'Length' 
+WHEN invent.UNITID  = 'M2'THEN 'Area'  
+
+WHEN invent.UNITID  = 'M3'THEN 'Volume' 
+WHEN invent.UNITID  = 'ML' THEN 'Volume' 
+WHEN invent.UNITID  = 'PAR' THEN 'Count' 
+WHEN invent.UNITID  = 'Rull' THEN 'Other' 
+WHEN invent.UNITID  = 'Sats' THEN 'Count' 
+WHEN invent.UNITID  = 'ST' THEN 'Count' ELSE 'a' END AS UOMClassID
+
+
+-----------------------------------------------------------------------------------
+/*
+CASE WHEN  invent.PRICEUNIT = 'CM' THEN 'Lenght'ELSE
+CASE WHEN invent.PRICEUNIT  = 'DM2'THEN 'Area'  ELSE
+CASE WHEN invent.PRICEUNIT  = 'FP' THEN 'Other'	ELSE 
+CASE WHEN invent.PRICEUNIT  = 'GR' THEN 'Weight'ELSE
+CASE WHEN invent.PRICEUNIT  = 'Kart' THEN 'Other' ELSE
+CASE WHEN invent.PRICEUNIT  = 'KG' THEN 'Weight' ELSE
+CASE WHEN invent.PRICEUNIT  = 'L' THEN 'Volume' Else
+CASE WHEN invent.PRICEUNIT  = 'M' THEN 'Lenght' Else
+CASE WHEN invent.PRICEUNIT  = 'M2'THEN 'Area'  ELSE
+
+CASE WHEN invent.PRICEUNIT  = 'M3'THEN 'Volume' Else 
+CASE WHEN invent.PRICEUNIT  = 'ML' THEN 'Volume' else
+CASE WHEN invent.PRICEUNIT  = 'PAR' THEN 'Count' ELSE
+CASE WHEN invent.PRICEUNIT  = 'Rull' THEN 'Other' Else
+CASE WHEN invent.PRICEUNIT  = 'Sats' THEN 'Count' ELSE 
+CASE WHEN invent.PRICEUNIT  = 'ST' THEN 'Count' ELSE 
+END END END END END END END END END END END END END END END	AS UOMClassID
+*/
+
+
+
+FROM inventTable i INNER JOIN dbo.INVENTTABLEMODULE invent ON invent.DATAAREAID = i.DATAAREAID AND
+invent.ITEMID = i.ITEMID INNER JOIN dbo.INVENTTABLEMODULE purch ON purch.DATAAREAID = i.DATAAREAID AND purch.ITEMID = i.ITEMID
+WHERE i.DATAAREAID = 'ba1' AND
+invent.MODULETYPE = 0 AND 
+purch.MODULETYPE  = 1
+
+--AND LTRIM(i.ITEMID)='1130698501'--'1100160201'
+
+-----------------------------------------------------------------------------
+/*
+UNITID	TXT	UNITDECIMALS	UNITSYSTEM	DATAAREAID	RECID	RECVERSION
+CM	Centimeter	2	0	ba1	-1871266357	1
+DM2	Kvadratdecimeter	3	0	ba1	-1915612269	1
+FP	Förpackning	2	0	ba1	3234	NULL
+GR	Gram	3	0	ba1	3235	NULL
+KART	Kartong	0	0	ba1	102049494	NULL
+KG	Kilo	3	0	ba1	3236	NULL
+L	Liter	2	0	ba1	3240	NULL
+M	Meter	3	0	ba1	3237	NULL
+M2	Kvadratmeter	2	0	ba1	3238	NULL
+M3	Kubikmeter	2	0	ba1	3239	NULL
+ML	Milliliter	2	0	ba1	3241	NULL
+PAR	Par	2	0	ba1	3244	NULL
+RULL	Rulle	2	0	ba1	3245	NULL
+SATS	Sats	2	0	ba1	3246	NULL
+ST	Styck	2	0	ba1	3247	NULL
+SZT	Styck	2	0	ba1	178180813	482165640
+szt.	Styck	2	0	ba1	178180828	1
+*/
+-------------------------------------------------------------------------------
+--AND LTRIM(i.itemid)='1140534316'
+
+/*
+SELECT /*itemid,*/priceunit 
+FROM dbo.INVENTTABLEMODULE 
+WHERE INVENTTABLEMODULE.DATAAREAID ='ba1' AND MODULETYPE = 0 
+GROUP BY
+priceunit
+*/
+
+--SELECT * FROM dbo.UNIT WHERE UNIT.DATAAREAID ='ba1'
+GO
+
+SELECT 
+Company = 'BackerTe',
+PMUID = 1 ,
+VENDPAYMMODETABLE.PAYMMODE AS [Name]
+
+ 
+
+FROM VendPaymModeTable
+WHERE VENDPAYMMODETABLE.DATAAREAID = 'ba1'
+GO
+
+SELECT 
+DLVTERM.CODE,
+SUBSTRING(code,1,4) AS TermsCode,
+DLVTERM.TXT AS [Description]
+FROM dlvterm
+WHERE DLVTERM.DATAAREAID ='ba1'
+ORDER BY SUBSTRING(code,1,4)
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+SELECT --PAYMTERM.PAYMTERMID,
+--SUBSTRING(PAYMTERM.PAYMTERMID,1,4) AS TermsCode,
+Company = 'BackerTe',
+PaymTerm.EPICORPAYMTERMID AS TermsCode,
+PAYMTERM.DESCRIPTION AS [Description],
+PAYMTERM.NUMOFDAYS AS NumberOfDays
+--LEN(PAYMTERMID) AS c,
+--*
+FROM 
+dbo.PAYMTERM
+WHERE PAYMTERM.DATAAREAID = 'ba1'
+ORDER BY LEN(PAYMTERMID)
+GO
+
+/*
+		Change the database name and the snapshot name 
+
+*/
+USE master;
+GO
+
+-- Reverting AgdaTEST to AgdaTest_Agda_snap observe change databasename and snapshotname use FindSnapshot script to find the snapshotname 
+RESTORE DATABASE EpicorERPTest from   
+DATABASE_SNAPSHOT = 'EpicorERPTest_snap';
+GO
+
+SELECT  Company = 'BackerTe',
+ID AS SecGroupCode,
+[Name] AS SecGroupCodeDesc
+FROM UserGroupInfo
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+
+SELECT 
+Company = 'BackerTe',
+PAYMTERM.PAYMTERMID AS TermsCode,
+--PAYMTERM.EPICORPAYMTERMID AS TermsCode,
+--SUBSTRING(PAYMTERM.PAYMTERMID,1,4) AS TermsCode,
+PAYMTERM.DESCRIPTION AS [Description],
+PAYMTERM.NUMOFDAYS AS NumberOfDays,
+LEN(PAYMTERMID) AS c
+--*
+FROM 
+dbo.PAYMTERM
+WHERE PAYMTERM.DATAAREAID = 'bo1'
+ORDER BY LEN(PAYMTERMID)
+GO
+
+-----------
+SELECT 
+Company = 'BackerTe',
+DLVTerm.Code AS TermsCode,
+DLVTerm.txt AS [Description],
+LEN(code) AS Chars
+--DLVTerm.NUMOFDAYS AS NumberOfDays
+
+FROM 
+DLVTerm
+WHERE DLVTerm.DATAAREAID = 'bo1'
+ORDER BY LEN(code)
+GO
+
+SELECT
+Company = 'BackerTe',
+WMSLOCATION.INVENTLOCATIONID AS WareHouseCode,
+WMSLOCATION.WMSLOCATIONID AS BinNum,
+LEN(WMSLOCATION.WMSLOCATIONID) AS chars10,
+WMSLOCATION.CHECKTEXT AS [Description],
+LEN(WMSLOCATION.CHECKTEXT) AS Chars30,
+--CASE WHEN WMSLOCATION.CHECKTEXT = '' OR WMSLOCATION.CHECKTEXT IS NULL THEN WMSLOCATION.WMSLOCATIONID ELSE WMSLOCATION.CHECKTEXT END AS [Description],
+
+CASE WHEN INVENTLOCATIONID = 'BHV' THEN 'SOSDALA' ELSE 
+CASE WHEN INVENTLOCATIONID = 'KOL' THEN 'Kolbäck' ELSE 'BHV'
+END END AS Plant
+
+
+FROM
+WMSLocation
+WHERE WMSLOCATION.DATAAREAID ='bo1'
+ORDER BY chars10 desc
+GO
+
+SELECT * FROM dbo.dmart_mps WHERE profiledate ='2018-09-26'
+GO
+
+SELECT * FROM dbo.Dmart_MPSAnalyze WHERE profiledate ='2018-09-26'
+GO
+
+SELECT * FROM dbo.Dmart_mpsTransactions WHERE profiledate ='2018-09-26' AND Dmart_mpsTransactions.EMPLID ='680'
+GO
+
+SELECT 
+Company = 'BackerTe',
+PAYMTERM.PAYMTERMID,
+SUBSTRING(PAYMTERM.PAYMTERMID,1,4) AS TermsCode,
+PAYMTERM.DESCRIPTION AS [Description],
+PAYMTERM.NUMOFDAYS AS NumberOfDays
+--LEN(PAYMTERMID) AS c,
+--*
+FROM 
+dbo.PAYMTERM
+WHERE PAYMTERM.DATAAREAID = 'ba1'
+ORDER BY LEN(PAYMTERMID)
+GO
+
+select 
+Company = 'BackerTe',
+VENDGROUP.VENDGROUP AS GroupCode,
+Name AS Groupdescription
+
+FROM dbo.VENDGROUP
+WHERE VENDGROUP.DATAAREAID ='ba1'
+GO
+
+SELECT
+Company = 'BackerTe',
+WMSLOCATION.INVENTLOCATIONID AS WareHouseCode,
+WMSLOCATION.WMSLOCATIONID AS BinNum,
+CASE WHEN WMSLOCATION.CHECKTEXT = '' OR WMSLOCATION.CHECKTEXT IS NULL THEN WMSLOCATION.WMSLOCATIONID ELSE WMSLOCATION.CHECKTEXT + ' ' +WMSLOCATION.WMSLOCATIONID END AS [Description],
+
+CASE WHEN INVENTLOCATIONID = 'BHV' THEN 'MfgSys' ELSE 
+CASE WHEN INVENTLOCATIONID = 'KOL' THEN 'MfgKol' ELSE 'MfgSys'
+END END AS Plant
+
+
+FROM
+WMSLocation
+WHERE WMSLOCATION.DATAAREAID ='ba1'
+GO
+
+SELECT 
+--*,
+Company = 'BackerTe',
+
+-- site = plant--> MfgKol = Kolbäck , MfgSys = Sosdala
+CASE WHEN SUBSTRING(WRKCTRTABLE.WRKCTRID,1,1)='k' THEN 'MfgKol' ELSE 'MfgSys' END AS Plant,
+
+WRKCTRTABLE.WRKCTRGROUPID AS ResourceGrpID,
+WRKCTRTABLE.NAME AS [Description],
+ CASE WHEN WRKCTRTABLE.WRKCTRNUMOF = 0 THEN 1 ELSE WRKCTRTABLE.WRKCTRNUMOF end  AS [NumberOfMachines],
+WRKCTRTABLE.QUEUETIMEAFTER AS MoveHours, -- QueueTime after
+
+CASE WHEN WRKCTRTABLE.ACK_WRKCTRDEPCODE = '' OR WRKCTRTABLE.ACK_WRKCTRDEPCODE IS NULL THEN '9999' ELSE WRKCTRTABLE.ACK_WRKCTRDEPCODE END  AS JCDept,
+
+WRKCTRTABLE.QUEUETIMEBEFORE AS QueHours , --Queuetime before
+WRKCTRTABLE.EFFECTIVITYPCT AS DailyCapacity1,
+
+
+-- wrkctrType gives if this is Lego or not type 0  = Lego ,type 2 = machine, Type 1 = Human --> Epicor = ResourceTypeDescription
+CASE WHEN WRKCTRTABLE.WRKCTRTYPE = 0 THEN 'Lego'
+ WHEN WRKCTRTABLE.WRKCTRTYPE = 1 THEN 'Human'
+ WHEN WRKCTRTABLE.WRKCTRTYPE = 2 THEN 'Machine' ELSE 'ab' END AS ResourceType,
+
+ -- Warehouse and bins
+ -- Input warehouse this is tempororary
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHLOC IS NULL THEN 'BHV' ELSE WRKCTRTABLE.ACK_BACKFLUSHLOC END AS InputWhse,
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHWMSLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHWMSLOC IS NULL THEN 'KONV' ELSE WRKCTRTABLE.ACK_BACKFLUSHWMSLOC END AS InputBinNum,
+  -- Output warehouse this is tempororary
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHLOC IS NULL THEN 'BHV' ELSE WRKCTRTABLE.ACK_BACKFLUSHLOC END AS OutputWhse,
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHWMSLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHWMSLOC IS NULL THEN 'KONV' ELSE WRKCTRTABLE.ACK_BACKFLUSHWMSLOC END AS OutputBinNum,
+ 
+ 
+ -- Backflush
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHLOC IS NULL THEN 'BHV' ELSE WRKCTRTABLE.ACK_BACKFLUSHLOC END AS BackFlushWhse,
+ --WRKCTRTABLE.ACK_BACKFLUSHLOC AS BackFlushWhse,
+ CASE WHEN WRKCTRTABLE.ACK_BACKFLUSHWMSLOC  = '' or WRKCTRTABLE.ACK_BACKFLUSHWMSLOC IS NULL THEN 'KONV' ELSE WRKCTRTABLE.ACK_BACKFLUSHWMSLOC END AS BackFlushBinNum,
+ --WRKCTRTABLE.ACK_BACKFLUSHWMSLOC AS BackFlushBinNum,
+
+ CASE WHEN WRKCTRTABLE.WRKCTRTYPE = 0 THEN 1 ELSE 0 END AS SubContract,
+ 
+ WRKCTRTABLE.WRKCTRID AS [Resource#ResourceID],
+ WRKCTRTABLE.NAME AS [Resource#Description]
+
+
+
+  
+FROM dbo.WRKCTRTABLE
+WHERE WRKCTRTABLE.DATAAREAID = 'ba1'
+AND WRKCTRTABLE.ISGROUP = 1
+
+-------Select wrkctr----------
+--SELECT ACK_WRKCTRDEPCODE 
+--FROM dbo.WRKCTRTABLE 
+--WHERE WRKCTRTABLE.DATAAREAID ='ba1' GROUP BY WRKCTRTABLE.ACK_WRKCTRDEPCODE
+--ORDER BY	ACK_WRKCTRDEPCODE
+---------------------
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+
+GO
+
+/*
+--------  Script created bu 2101hako
+*/
+
+
+GO
